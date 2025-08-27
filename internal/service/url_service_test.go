@@ -1,4 +1,4 @@
-package unit
+package service
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/config"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/domain"
-	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/service"
 )
 
 func TestURLService_ShortenURL(t *testing.T) {
@@ -23,7 +22,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockRepo := new(mocks.MockURLRepository)
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
-		urlService := service.NewURLService(mockRepo, mockCache, logger, &config.Config{
+		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
 			MachineID: 1,
 			BaseURL:   "http://localhost:8080",
 		})
@@ -66,7 +65,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockRepo := new(mocks.MockURLRepository)
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
-		urlService := service.NewURLService(mockRepo, mockCache, logger, &config.Config{
+		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
 			MachineID: 1,
 			BaseURL:   "http://localhost:8080",
 		})
@@ -78,7 +77,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		response, err := urlService.ShortenURL(context.Background(), req)
 
 		assert.Error(t, err)
-		assert.Equal(t, service.ErrInvalidURL, err)
+		assert.Equal(t, ErrInvalidURL, err)
 		assert.Nil(t, response)
 		// No expectations to assert since validation happens before any repo/cache calls
 	})
@@ -87,7 +86,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockRepo := new(mocks.MockURLRepository)
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
-		urlService := service.NewURLService(mockRepo, mockCache, logger, &config.Config{
+		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
 			MachineID: 1,
 			BaseURL:   "http://localhost:8080",
 		})
@@ -117,7 +116,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		response, err := urlService.ShortenURL(context.Background(), req)
 
 		assert.Error(t, err)
-		assert.Equal(t, service.ErrCustomAliasTaken, err)
+		assert.Equal(t, ErrCustomAliasTaken, err)
 		assert.Nil(t, response)
 		mockRepo.AssertExpectations(t)
 		mockCache.AssertExpectations(t)
@@ -127,7 +126,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockRepo := new(mocks.MockURLRepository)
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
-		urlService := service.NewURLService(mockRepo, mockCache, logger, &config.Config{
+		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
 			MachineID: 1,
 			BaseURL:   "http://localhost:8080",
 		})
@@ -164,7 +163,7 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockRepo := new(mocks.MockURLRepository)
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
-		urlService := service.NewURLService(mockRepo, mockCache, logger, &config.Config{
+		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
 			MachineID: 1,
 			BaseURL:   "http://localhost:8080",
 		})
@@ -202,14 +201,14 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockCache.AssertExpectations(t)
 	})
 }
+
 func TestURLService_GetOriginalURL(t *testing.T) {
-	mockRepo := new(mocks.MockURLRepository)
-	mockCache := new(mocks.MockCacheRepository)
-	logger := zaptest.NewLogger(t)
-
-	urlService := service.NewURLService(mockRepo, mockCache, logger, nil)
-
 	t.Run("CacheHit", func(t *testing.T) {
+		mockRepo := new(mocks.MockURLRepository)
+		mockCache := new(mocks.MockCacheRepository)
+		logger := zaptest.NewLogger(t)
+		urlService := NewURLService(mockRepo, mockCache, logger, nil)
+
 		cachedURL := &domain.URL{
 			ShortCode:   "abc123",
 			OriginalURL: "https://example.com",
@@ -222,16 +221,27 @@ func TestURLService_GetOriginalURL(t *testing.T) {
 				*arg = *cachedURL
 			}).
 			Return(nil)
-		mockRepo.On("UpdateClickCount", mock.Anything, "abc123").Return(nil)
+
+		// Mock the increment call that happens asynchronously
+		mockCache.On("Increment", mock.Anything, "clicks:abc123", int64(1)).
+			Return(nil)
 
 		originalURL, err := urlService.GetOriginalURL(context.Background(), "abc123")
 
 		assert.NoError(t, err)
 		assert.Equal(t, "https://example.com", originalURL)
+
+		// Wait a bit for the goroutine to complete
+		time.Sleep(100 * time.Millisecond)
 		mockCache.AssertExpectations(t)
 	})
 
 	t.Run("CacheMissDatabaseHit", func(t *testing.T) {
+		mockRepo := new(mocks.MockURLRepository)
+		mockCache := new(mocks.MockCacheRepository)
+		logger := zaptest.NewLogger(t)
+		urlService := NewURLService(mockRepo, mockCache, logger, nil)
+
 		dbURL := &domain.URL{
 			ShortCode:   "def456",
 			OriginalURL: "https://example.org",
@@ -244,17 +254,29 @@ func TestURLService_GetOriginalURL(t *testing.T) {
 			Return(dbURL, nil)
 		mockCache.On("Set", mock.Anything, "url:def456", dbURL, time.Hour).
 			Return(nil)
+
+		// Mock the increment call - first try cache, then fallback to database
+		mockCache.On("Increment", mock.Anything, "clicks:def456", int64(1)).
+			Return(errors.New("cache error"))
 		mockRepo.On("UpdateClickCount", mock.Anything, "def456").Return(nil)
 
 		originalURL, err := urlService.GetOriginalURL(context.Background(), "def456")
 
 		assert.NoError(t, err)
 		assert.Equal(t, "https://example.org", originalURL)
+
+		// Wait a bit for the goroutine to complete
+		time.Sleep(100 * time.Millisecond)
 		mockCache.AssertExpectations(t)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("URLNotFound", func(t *testing.T) {
+		mockRepo := new(mocks.MockURLRepository)
+		mockCache := new(mocks.MockCacheRepository)
+		logger := zaptest.NewLogger(t)
+		urlService := NewURLService(mockRepo, mockCache, logger, nil)
+
 		mockCache.On("Get", mock.Anything, "url:notfound", mock.AnythingOfType("*domain.URL")).
 			Return(errors.New("not found"))
 		mockRepo.On("GetURLByShortCode", mock.Anything, "notfound").
@@ -263,13 +285,18 @@ func TestURLService_GetOriginalURL(t *testing.T) {
 		originalURL, err := urlService.GetOriginalURL(context.Background(), "notfound")
 
 		assert.Error(t, err)
-		assert.Equal(t, service.ErrURLNotFound, err)
+		assert.Equal(t, ErrURLNotFound, err)
 		assert.Empty(t, originalURL)
 		mockCache.AssertExpectations(t)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("ExpiredURL", func(t *testing.T) {
+		mockRepo := new(mocks.MockURLRepository)
+		mockCache := new(mocks.MockCacheRepository)
+		logger := zaptest.NewLogger(t)
+		urlService := NewURLService(mockRepo, mockCache, logger, nil)
+
 		expiredTime := time.Now().Add(-time.Hour)
 		expiredURL := &domain.URL{
 			ShortCode:   "expired",
@@ -288,7 +315,7 @@ func TestURLService_GetOriginalURL(t *testing.T) {
 		originalURL, err := urlService.GetOriginalURL(context.Background(), "expired")
 
 		assert.Error(t, err)
-		assert.Equal(t, service.ErrURLExpired, err)
+		assert.Equal(t, ErrURLExpired, err)
 		assert.Empty(t, originalURL)
 		mockCache.AssertExpectations(t)
 	})

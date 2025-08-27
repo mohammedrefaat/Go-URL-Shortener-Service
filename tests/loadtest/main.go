@@ -24,5 +24,7 @@ func main() {
 
 	fmt.Printf("99th percentile: %s\n", metrics.Latencies.P99)
 	fmt.Printf("Requests: %d\n", metrics.Requests)
-	fmt.Printf("Errors: %f\n", metrics.Errors)
+	fmt.Printf("Success rate: %.2f%%\n", metrics.Success*100)
+	fmt.Printf("Error rate: %.2f%%\n", (1-metrics.Success)*100)
+	fmt.Printf("Total errors: %d\n", len(metrics.Errors))
 }
