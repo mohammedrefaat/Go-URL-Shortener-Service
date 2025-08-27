@@ -8,6 +8,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/config"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/domain"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/utils"
 )
@@ -23,15 +24,15 @@ type URLService struct {
 	urlRepo   domain.URLRepository
 	cacheRepo domain.CacheRepository
 	logger    *zap.Logger
-	baseURL   string
+	cfg       *config.Config
 }
 
-func NewURLService(urlRepo domain.URLRepository, cacheRepo domain.CacheRepository, logger *zap.Logger) *URLService {
+func NewURLService(urlRepo domain.URLRepository, cacheRepo domain.CacheRepository, logger *zap.Logger, cfg *config.Config) *URLService {
 	return &URLService{
 		urlRepo:   urlRepo,
 		cacheRepo: cacheRepo,
 		logger:    logger,
-		baseURL:   "http://localhost:8080", // Should come from config
+		cfg:       cfg,
 	}
 }
 
@@ -41,14 +42,26 @@ func (s *URLService) ShortenURL(ctx context.Context, req *domain.ShortenRequest)
 		return nil, ErrInvalidURL
 	}
 
+	cache2 := fmt.Sprintf("lurl:%s", req.URL)
+	var cachedURL domain.URL
+	err := s.cacheRepo.Get(ctx, cache2, &cachedURL)
+	if err == nil {
+		if !s.isExpired(&cachedURL) {
+			// Increment click count asynchronously
+			return s.buildResponse(&cachedURL), nil
+		}
+	}
 	// Check if URL already exists
 	if existing, err := s.urlRepo.GetURLByOriginalURL(ctx, req.URL); err == nil {
+		cacheKey2 := fmt.Sprintf("lurl:%s", existing.OriginalURL)
+		if err := s.cacheRepo.Set(ctx, cacheKey2, existing, time.Hour); err != nil {
+			s.logger.Warn("Failed to cache URL", zap.Error(err))
+		}
 		return s.buildResponse(existing), nil
 	}
 
 	// Generate short code
 	var shortCode string
-	var err error
 
 	if req.CustomAlias != "" {
 		// Check if custom alias is available
@@ -57,8 +70,9 @@ func (s *URLService) ShortenURL(ctx context.Context, req *domain.ShortenRequest)
 		}
 		shortCode = req.CustomAlias
 	} else {
-		shortCode, err = s.generateUniqueShortCode(ctx)
-		if err != nil {
+		//shortCode, err = s.generateUniqueShortCode(ctx)
+		shortCode := utils.GenerateID(s.cfg.MachineID)
+		if shortCode == "" {
 			return nil, fmt.Errorf("failed to generate short code: %w", err)
 		}
 	}
@@ -81,7 +95,10 @@ func (s *URLService) ShortenURL(ctx context.Context, req *domain.ShortenRequest)
 	if err := s.cacheRepo.Set(ctx, cacheKey, url, time.Hour); err != nil {
 		s.logger.Warn("Failed to cache URL", zap.Error(err))
 	}
-
+	cacheKey2 := fmt.Sprintf("lurl:%s", url.OriginalURL)
+	if err := s.cacheRepo.Set(ctx, cacheKey2, url, time.Hour); err != nil {
+		s.logger.Warn("Failed to cache URL", zap.Error(err))
+	}
 	s.logger.Info("URL shortened successfully",
 		zap.String("short_code", shortCode),
 		zap.String("original_url", req.URL),
@@ -165,7 +182,7 @@ func (s *URLService) isExpired(url *domain.URL) bool {
 
 func (s *URLService) buildResponse(url *domain.URL) *domain.ShortenResponse {
 	return &domain.ShortenResponse{
-		ShortURL:    s.baseURL + "/" + url.ShortCode,
+		ShortURL:    s.cfg.BaseURL + "/" + url.ShortCode,
 		ShortCode:   url.ShortCode,
 		OriginalURL: url.OriginalURL,
 		ExpiresAt:   url.ExpiresAt,

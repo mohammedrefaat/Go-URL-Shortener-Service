@@ -43,7 +43,7 @@ func main() {
 	defer cacheRepo.Close()
 
 	// Initialize services
-	urlService := service.NewURLService(dbRepo, cacheRepo, log)
+	urlService := service.NewURLService(dbRepo, cacheRepo, log, cfg)
 	analyticsService := service.NewAnalyticsService(dbRepo, cacheRepo, log)
 
 	// Initialize handlers

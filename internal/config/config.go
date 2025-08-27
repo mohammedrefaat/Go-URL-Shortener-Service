@@ -15,6 +15,7 @@ type Config struct {
 	DatabaseURL string
 	RedisURL    string
 	RateLimit   RateLimitConfig
+	MachineID   int64
 }
 
 type RateLimitConfig struct {
@@ -35,6 +36,7 @@ func Load() *Config {
 			Requests: getEnvAsInt("RATE_LIMIT_REQUESTS", 100),
 			Window:   time.Duration(getEnvAsInt("RATE_LIMIT_WINDOW", 60)) * time.Second,
 		},
+		MachineID: 1,
 	}
 }
 

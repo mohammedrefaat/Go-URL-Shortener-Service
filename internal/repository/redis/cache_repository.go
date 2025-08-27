@@ -68,3 +68,31 @@ func (r *CacheRepository) HealthCheck(ctx context.Context) error {
 func (r *CacheRepository) Close() error {
 	return r.client.Close()
 }
+
+func (r *CacheRepository) SetURLMapping(ctx context.Context, shortKey string, url string, ttl time.Duration) error {
+	// Store shortKey → URL
+	if err := r.Set(ctx, "shortKey:"+shortKey, url, ttl); err != nil {
+		return fmt.Errorf("failed to cache shortKey mapping: %w", err)
+	}
+	// Store url → shortKey
+	if err := r.Set(ctx, "url:"+url, shortKey, ttl); err != nil {
+		return fmt.Errorf("failed to cache url mapping: %w", err)
+	}
+	return nil
+}
+
+func (r *CacheRepository) GetURLByShortKey(ctx context.Context, shortKey string) (string, error) {
+	var url string
+	if err := r.Get(ctx, "shortKey:"+shortKey, &url); err != nil {
+		return "", err
+	}
+	return url, nil
+}
+
+func (r *CacheRepository) GetShortKeyByURL(ctx context.Context, url string) (string, error) {
+	var shortKey string
+	if err := r.Get(ctx, "url:"+url, &shortKey); err != nil {
+		return "", err
+	}
+	return shortKey, nil
+}
