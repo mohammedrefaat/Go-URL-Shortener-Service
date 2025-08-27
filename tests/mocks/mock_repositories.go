@@ -85,3 +85,8 @@ func (m *MockCacheRepository) HealthCheck(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }
+
+func (m *MockCacheRepository) Cleanup(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}

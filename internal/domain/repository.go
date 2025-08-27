@@ -21,4 +21,5 @@ type CacheRepository interface {
 	Delete(ctx context.Context, key string) error
 	Increment(ctx context.Context, key string, value int64) error
 	HealthCheck(ctx context.Context) error
+	Cleanup(ctx context.Context) error
 }

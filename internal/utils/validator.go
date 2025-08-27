@@ -37,25 +37,3 @@ func IsValidURL(rawURL string) bool {
 
 	return true
 }
-
-func IsValidShortCode(shortCode string) bool {
-	if len(shortCode) < 4 || len(shortCode) > 12 {
-		return false
-	}
-
-	// Check if contains only valid base62 characters
-	for _, char := range shortCode {
-		found := false
-		for _, validChar := range base62Chars {
-			if char == validChar {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
-}

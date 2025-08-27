@@ -70,8 +70,7 @@ func (s *URLService) ShortenURL(ctx context.Context, req *domain.ShortenRequest)
 		}
 		shortCode = req.CustomAlias
 	} else {
-		//shortCode, err = s.generateUniqueShortCode(ctx)
-		shortCode := utils.GenerateID(s.cfg.MachineID)
+		shortCode = utils.GenerateID(s.cfg.MachineID)
 		if shortCode == "" {
 			return nil, fmt.Errorf("failed to generate short code: %w", err)
 		}
@@ -141,20 +140,6 @@ func (s *URLService) GetOriginalURL(ctx context.Context, shortCode string) (stri
 	go s.incrementClickCount(context.Background(), shortCode)
 
 	return url.OriginalURL, nil
-}
-
-func (s *URLService) generateUniqueShortCode(ctx context.Context) (string, error) {
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
-		shortCode := utils.GenerateShortCode(6)
-
-		// Check if short code already exists
-		if _, err := s.urlRepo.GetURLByShortCode(ctx, shortCode); err != nil {
-			// Short code doesn't exist, we can use it
-			return shortCode, nil
-		}
-	}
-	return "", errors.New("failed to generate unique short code")
 }
 
 func (s *URLService) incrementClickCount(ctx context.Context, shortCode string) {

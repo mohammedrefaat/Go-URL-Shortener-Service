@@ -96,3 +96,7 @@ func (r *CacheRepository) GetShortKeyByURL(ctx context.Context, url string) (str
 	}
 	return shortKey, nil
 }
+
+func (r *CacheRepository) Cleanup(ctx context.Context) error {
+	return r.client.FlushDB(ctx).Err()
+}

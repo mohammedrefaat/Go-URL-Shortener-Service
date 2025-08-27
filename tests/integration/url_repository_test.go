@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/domain"
-	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/repository/postgres"
+	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/store/postgres"
 )
 
 func TestURLRepository_Integration(t *testing.T) {
@@ -19,7 +19,7 @@ func TestURLRepository_Integration(t *testing.T) {
 	repo, err := postgres.NewURLRepository(databaseURL)
 	require.NoError(t, err)
 	defer repo.Close()
-
+	repo.Cleanup(context.Background())
 	ctx := context.Background()
 
 	t.Run("CreateAndGetURL", func(t *testing.T) {

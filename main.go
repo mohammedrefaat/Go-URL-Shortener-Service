@@ -16,9 +16,9 @@ import (
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/config"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/handler"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/middleware"
-	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/repository/postgres"
-	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/repository/redis"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/service"
+	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/store/postgres"
+	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/store/redis"
 )
 
 func main() {

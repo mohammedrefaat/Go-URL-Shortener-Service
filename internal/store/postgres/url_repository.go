@@ -163,15 +163,15 @@ func (r *URLRepository) GetAnalytics(ctx context.Context, shortCode string, days
 
 	// Get daily stats
 	dailyQuery := `
-	SELECT DATE(clicked_at) as date, COUNT(*) as clicks
-	FROM url_analytics
-	WHERE short_code = $1 AND clicked_at >= NOW() - INTERVAL '%d days'
-	GROUP BY DATE(clicked_at)
-	ORDER BY date DESC
-	`
-
+SELECT DATE(clicked_at) as date, COUNT(*) as clicks
+FROM url_analytics
+WHERE short_code = $1 AND clicked_at >= NOW() - ($2 * INTERVAL '1 day')
+GROUP BY DATE(clicked_at)
+ORDER BY date DESC
+`
 	var dailyStats []domain.DailyStat
-	err = r.db.SelectContext(ctx, &dailyStats, fmt.Sprintf(dailyQuery, days), shortCode)
+	err = r.db.SelectContext(ctx, &dailyStats, dailyQuery, shortCode, days) // Pass days as parameter to prevent SQL injection
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get daily stats: %w", err)
 	}
@@ -209,4 +209,21 @@ func (r *URLRepository) HealthCheck(ctx context.Context) error {
 
 func (r *URLRepository) Close() error {
 	return r.db.Close()
+}
+
+func (r *URLRepository) Cleanup(ctx context.Context) error {
+	query := `DELETE FROM urls`
+
+	result, err := r.db.ExecContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to delete expired URLs: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err == nil && rowsAffected > 0 {
+		// Log the cleanup (would use proper logger in real implementation)
+		fmt.Printf("Deleted %d expired URLs\n", rowsAffected)
+	}
+
+	return nil
 }
