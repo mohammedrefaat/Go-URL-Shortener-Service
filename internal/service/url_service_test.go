@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zaptest"
 
-	"github.com/mohammedrefaat/Go-URL-Shortener-Service/tests/mocks"
+	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/store/mocks"
 
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/config"
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/domain"

@@ -7,8 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 func TestRateLimiter(t *testing.T) {
@@ -88,4 +92,43 @@ func TestJWTAuth(t *testing.T) {
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
+}
+func TestLoggerMiddleware(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Create zap observer to capture logs
+	core, recorded := observer.New(zap.InfoLevel)
+	logger := zap.New(core)
+
+	// Create a test router with middleware
+	router := gin.New()
+	router.Use(Logger(logger))
+	router.GET("/ping", func(c *gin.Context) {
+		time.Sleep(10 * time.Millisecond) // simulate latency
+		c.String(http.StatusOK, "pong")
+	})
+
+	// Create test request
+	req := httptest.NewRequest(http.MethodGet, "/ping?foo=bar", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	w := httptest.NewRecorder()
+
+	// Serve the request
+	router.ServeHTTP(w, req)
+
+	// Validate response
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "pong", w.Body.String())
+
+	// Validate logs
+	logs := recorded.All()
+	require.Len(t, logs, 1, "expected one log entry")
+
+	entry := logs[0]
+	require.Equal(t, "HTTP Request", entry.Message)
+	require.Equal(t, "GET", entry.ContextMap()["method"])
+	require.Equal(t, "/ping?foo=bar", entry.ContextMap()["path"])
+	require.Equal(t, int64(http.StatusOK), entry.ContextMap()["status"].(int64))
+	require.Contains(t, entry.ContextMap()["client_ip"].(string), "127.0.0.1")
+	require.GreaterOrEqual(t, entry.ContextMap()["latency"].(time.Duration).Milliseconds(), int64(10))
 }

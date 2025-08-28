@@ -2,14 +2,17 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/domain"
 )
@@ -187,4 +190,52 @@ func TestURLRepository_Integration(t *testing.T) {
 	if _, err := repo.GetURLByShortCode(ctx, "abc123"); err == nil {
 		t.Fatalf("expected not found after cleanup for abc123, got nil")
 	}
+}
+
+func TestGetURLByID_NotFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := &URLRepository{db: sqlx.NewDb(db, "postgres")}
+
+	// simulate no rows
+	mock.ExpectQuery(`SELECT (.+) FROM urls WHERE short_code = \$1`).
+		WithArgs("nonexistent").
+		WillReturnError(sql.ErrNoRows)
+
+	_, err = repo.GetURLByShortCode(context.Background(), "nonexistent")
+	require.Error(t, err)
+	require.Equal(t, "URL not found", err.Error())
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDeleteExpiredURLs_Error(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := &URLRepository{db: sqlx.NewDb(db, "postgres")}
+
+	mock.ExpectExec(`DELETE FROM urls`).
+		WillReturnError(sql.ErrConnDone)
+
+	err = repo.DeleteExpiredURLs(context.Background())
+	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestHealthCheck_Error(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo := &URLRepository{db: sqlx.NewDb(db, "postgres")}
+
+	// mock Ping fails
+	mock.ExpectPing().WillReturnError(sql.ErrConnDone)
+
+	err = repo.HealthCheck(context.Background())
+	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
