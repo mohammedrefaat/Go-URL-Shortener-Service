@@ -14,6 +14,7 @@ type HealthHandler struct {
 	cacheRepo domain.CacheRepository
 }
 
+// NewHealthHandler creates a new HealthHandler
 func NewHealthHandler(urlRepo domain.URLRepository, cacheRepo domain.CacheRepository) *HealthHandler {
 	return &HealthHandler{
 		urlRepo:   urlRepo,
@@ -21,13 +22,14 @@ func NewHealthHandler(urlRepo domain.URLRepository, cacheRepo domain.CacheReposi
 	}
 }
 
+// HealthCheck handles the health check requests
 func (h *HealthHandler) HealthCheck(c *gin.Context) {
 	status := "healthy"
 	code := http.StatusOK
 
 	// Check database
 	dbStatus := "connected"
-	if err := h.urlRepo.HealthCheck(c.Request.Context()); err != nil {
+	if err := h.urlRepo.HealthCheck(c.Request.Context()); err != nil { // Check database health
 		dbStatus = "disconnected"
 		status = "unhealthy"
 		code = http.StatusServiceUnavailable
@@ -35,7 +37,7 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 
 	// Check cache
 	cacheStatus := "connected"
-	if err := h.cacheRepo.HealthCheck(c.Request.Context()); err != nil {
+	if err := h.cacheRepo.HealthCheck(c.Request.Context()); err != nil { // Check cache health
 		cacheStatus = "disconnected"
 		status = "degraded"
 		if code == http.StatusOK {
@@ -48,5 +50,5 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 		"timestamp": time.Now().UTC(),
 		"database":  dbStatus,
 		"cache":     cacheStatus,
-	})
+	}) // Respond with the health check status
 }

@@ -9,18 +9,17 @@ import (
 )
 
 type tokenBucket struct {
-	tokens     int
-	capacity   int
-	refill     time.Duration
-	lastRefill time.Time
-	mutex      sync.Mutex
+	tokens     int           // current number of tokens left
+	capacity   int           // max number of tokens (burst size)
+	refill     time.Duration // how often tokens reset
+	lastRefill time.Time     // when tokens were last refilled
+	mutex      sync.Mutex    // protects this bucket
 }
-
 type RateLimiter struct {
-	buckets map[string]*tokenBucket
-	mutex   sync.RWMutex
-	rate    int
-	window  time.Duration
+	buckets map[string]*tokenBucket // one bucket per client (IP address)
+	mutex   sync.RWMutex            // protects buckets map
+	rate    int                     // tokens per window
+	window  time.Duration           // window size
 }
 
 func NewRateLimiter(requestsPerWindow int, window time.Duration) *RateLimiter {

@@ -9,22 +9,25 @@ import (
 
 func Logger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-		raw := c.Request.URL.RawQuery
+		start := time.Now()           // record start time
+		path := c.Request.URL.Path    // requested path (/shorten, /health, etc.)
+		raw := c.Request.URL.RawQuery // query string (?foo=bar)
 
-		c.Next()
+		c.Next() // let Gin handle the request (call the next middleware/handler)
 
-		latency := time.Since(start)
-		clientIP := c.ClientIP()
-		method := c.Request.Method
-		statusCode := c.Writer.Status()
-		bodySize := c.Writer.Size()
+		// After handler finishes, we calculate metrics:
+		latency := time.Since(start)    // how long it took
+		clientIP := c.ClientIP()        // request’s IP address
+		method := c.Request.Method      // GET/POST/etc
+		statusCode := c.Writer.Status() // HTTP status (200, 404, etc)
+		bodySize := c.Writer.Size()     // response size in bytes
 
+		// Reconstruct full path with query string if exists
 		if raw != "" {
 			path = path + "?" + raw
 		}
 
+		// Log structured fields with zap
 		logger.Info("HTTP Request",
 			zap.String("client_ip", clientIP),
 			zap.String("method", method),

@@ -28,13 +28,13 @@ func (h *AnalyticsHandler) GetAnalytics(c *gin.Context) {
 
 	// Parse days parameter (default to 30)
 	days := 30
-	if daysStr := c.Query("days"); daysStr != "" {
+	if daysStr := c.Query("days"); daysStr != "" { // Get 'days' query parameter
 		if parsedDays, err := strconv.Atoi(daysStr); err == nil && parsedDays > 0 && parsedDays <= 365 {
 			days = parsedDays
 		}
 	}
 
-	analytics, err := h.analyticsService.GetAnalytics(c.Request.Context(), shortCode, days)
+	analytics, err := h.analyticsService.GetAnalytics(c.Request.Context(), shortCode, days) // Get analytics data
 	if err != nil {
 		h.logger.Error("Failed to get analytics", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -45,5 +45,5 @@ func (h *AnalyticsHandler) GetAnalytics(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, analytics)
+	c.JSON(http.StatusOK, analytics) // Respond with the analytics data
 }
