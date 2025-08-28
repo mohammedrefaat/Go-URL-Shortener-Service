@@ -227,3 +227,59 @@ func (r *URLRepository) Cleanup(ctx context.Context) error {
 
 	return nil
 }
+
+func (r *URLRepository) RecordClick(ctx context.Context, analytics *domain.URLAnalytics) error {
+	query := `
+		INSERT INTO url_analytics (short_code, clicked_at, user_agent, ip_address, referer, country)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		analytics.ShortCode, analytics.ClickedAt, analytics.UserAgent,
+		analytics.IPAddress, analytics.Referer, analytics.Country)
+	return err
+}
+
+func (r *URLRepository) GetClickCount(ctx context.Context, shortCode string) (int64, error) {
+	var count int64
+	query := `SELECT COUNT(*) FROM url_analytics WHERE short_code = $1`
+	err := r.db.GetContext(ctx, &count, query, shortCode)
+	return count, err
+}
+
+func (r *URLRepository) GetDailyStats(ctx context.Context, shortCode string, days int) ([]domain.DailyStat, error) {
+	var stats []domain.DailyStat
+	query := `
+		SELECT 
+			DATE(clicked_at) as date,
+			COUNT(*) as clicks
+		FROM url_analytics 
+		WHERE short_code = $1 AND clicked_at >= NOW() - INTERVAL '%d days'
+		GROUP BY DATE(clicked_at)
+		ORDER BY date DESC
+	`
+	err := r.db.SelectContext(ctx, &stats, fmt.Sprintf(query, days), shortCode)
+	return stats, err
+}
+
+func (r *URLRepository) GetLastAccessed(ctx context.Context, shortCode string) (*time.Time, error) {
+	var lastAccessed sql.NullTime
+	query := `
+		SELECT MAX(clicked_at) 
+		FROM url_analytics 
+		WHERE short_code = $1
+	`
+	err := r.db.GetContext(ctx, &lastAccessed, query, shortCode)
+	if err != nil {
+		return nil, err
+	}
+	if !lastAccessed.Valid {
+		return nil, nil
+	}
+	return &lastAccessed.Time, nil
+}
+func (r *URLRepository) IsShortCodeExists(ctx context.Context, shortCode string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM urls WHERE short_code = $1)`
+	err := r.db.GetContext(ctx, &exists, query, shortCode)
+	return exists, err
+}

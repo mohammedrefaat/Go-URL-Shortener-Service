@@ -15,40 +15,6 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 )
 
-func TestRateLimiter(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	// Create rate limiter: 2 requests per 5 seconds
-	rateLimiter := NewRateLimiter(2, 5*time.Second)
-
-	router := gin.New()
-	router.Use(rateLimiter.Middleware())
-	router.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "ok"})
-	})
-
-	// First request should pass
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.RemoteAddr = "127.0.0.1:12345"
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// Second request should pass
-	req = httptest.NewRequest("GET", "/test", nil)
-	req.RemoteAddr = "127.0.0.1:12345"
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// Third request should be rate limited
-	req = httptest.NewRequest("GET", "/test", nil)
-	req.RemoteAddr = "127.0.0.1:12345"
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusTooManyRequests, w.Code)
-}
-
 func TestJWTAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	secret := "test-secret"

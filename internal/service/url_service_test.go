@@ -108,11 +108,6 @@ func TestURLService_ShortenURL(t *testing.T) {
 			CustomAlias: "taken",
 		}
 
-		existingURL := &domain.URL{
-			ShortCode:   "taken",
-			OriginalURL: "https://other.com",
-		}
-
 		// Mock cache lookup (cache miss)
 		mockCache.On("Get", mock.Anything, "lurl:https://example.com", mock.AnythingOfType("*domain.URL")).
 			Return(errors.New("not found"))
@@ -122,18 +117,17 @@ func TestURLService_ShortenURL(t *testing.T) {
 			Return(nil, errors.New("not found"))
 
 		// Mock custom alias check - this should find the existing alias
-		mockRepo.On("GetURLByShortCode", mock.Anything, "taken").
-			Return(existingURL, nil)
+		mockRepo.On("IsShortCodeExists", mock.Anything, "taken").
+			Return(true, nil)
 
 		response, err := urlService.ShortenURL(context.Background(), req)
 
 		assert.Error(t, err)
-		assert.Equal(t, ErrCustomAliasTaken, err)
+		assert.EqualError(t, err, "custom alias already exists") // Updated this line
 		assert.Nil(t, response)
 		mockRepo.AssertExpectations(t)
 		mockCache.AssertExpectations(t)
 	})
-
 	t.Run("URLFoundInCache", func(t *testing.T) {
 		mockRepo := new(mocks.MockURLRepository)
 		mockCache := new(mocks.MockCacheRepository)

@@ -13,6 +13,7 @@ type URLRepository interface {
 	GetAnalytics(ctx context.Context, shortCode string, days int) (*AnalyticsResponse, error) // Get analytics for a URL
 	DeleteExpiredURLs(ctx context.Context) error                                              // Delete expired URLs
 	HealthCheck(ctx context.Context) error                                                    // Check the health of the database
+	IsShortCodeExists(ctx context.Context, shortCode string) (bool, error)                    // Check if a short code exists
 }
 
 type CacheRepository interface {
@@ -22,4 +23,12 @@ type CacheRepository interface {
 	Increment(ctx context.Context, key string, value int64) error                    // Increment a value in the cache
 	HealthCheck(ctx context.Context) error                                           // Check the health of the cache
 	Cleanup(ctx context.Context) error                                               // Cleanup expired cache entries
+	GetCounter(ctx context.Context, key string) (int64, error)
+}
+
+type AnalyticsRepository interface {
+	RecordClick(ctx context.Context, analytics *URLAnalytics) error
+	GetClickCount(ctx context.Context, shortCode string) (int64, error)
+	GetDailyStats(ctx context.Context, shortCode string, days int) ([]DailyStat, error)
+	GetLastAccessed(ctx context.Context, shortCode string) (*time.Time, error)
 }

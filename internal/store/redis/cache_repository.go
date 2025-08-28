@@ -100,3 +100,7 @@ func (r *CacheRepository) GetShortKeyByURL(ctx context.Context, url string) (str
 func (r *CacheRepository) Cleanup(ctx context.Context) error {
 	return r.client.FlushDB(ctx).Err()
 }
+
+func (r *CacheRepository) GetCounter(ctx context.Context, key string) (int64, error) {
+	return r.client.Get(ctx, key).Int64()
+}

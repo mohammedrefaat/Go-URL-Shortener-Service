@@ -117,11 +117,11 @@ func setupRoutes(cfg *config.Config, urlHandler *handler.URLHandler, analyticsHa
 	router.GET("/health", healthHandler.HealthCheck)
 
 	// Rate limiting
-	rateLimiter := middleware.NewRateLimiter(cfg.RateLimit.Requests, cfg.RateLimit.Window)
+	router.Use(middleware.RateLimiter(cfg.RateLimit))
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
-	v1.Use(rateLimiter.Middleware())
+
 	{
 		v1.POST("/shorten", urlHandler.ShortenURL)
 		v1.GET("/analytics/:shortCode", middleware.JWTAuth(cfg.JWTSecret()), analyticsHandler.GetAnalytics)

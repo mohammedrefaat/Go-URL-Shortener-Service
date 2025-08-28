@@ -6,102 +6,81 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
+
+	"github.com/mohammedrefaat/Go-URL-Shortener-Service/internal/config"
 )
 
-type tokenBucket struct {
-	tokens     int           // current number of tokens left
-	capacity   int           // max number of tokens (burst size)
-	refill     time.Duration // how often tokens reset
-	lastRefill time.Time     // when tokens were last refilled
-	mutex      sync.Mutex    // protects this bucket
-}
-type RateLimiter struct {
-	buckets map[string]*tokenBucket // one bucket per client (IP address)
-	mutex   sync.RWMutex            // protects buckets map
-	rate    int                     // tokens per window
-	window  time.Duration           // window size
+type rateLimiter struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
 }
 
-func NewRateLimiter(requestsPerWindow int, window time.Duration) *RateLimiter {
-	rl := &RateLimiter{
-		buckets: make(map[string]*tokenBucket),
-		rate:    requestsPerWindow,
-		window:  window,
+type RateLimiterMiddleware struct {
+	limiters map[string]*rateLimiter
+	mu       sync.RWMutex
+	rate     rate.Limit
+	burst    int
+	cleanup  time.Duration
+}
+
+func RateLimiter(cfg config.RateLimitConfig) gin.HandlerFunc {
+	rl := &RateLimiterMiddleware{
+		limiters: make(map[string]*rateLimiter),
+		rate:     rate.Every(cfg.Window / time.Duration(cfg.Requests)),
+		burst:    cfg.Requests,
+		cleanup:  time.Minute,
 	}
 
-	// Clean up expired buckets periodically
-	go rl.cleanup()
+	// Cleanup old limiters periodically
+	go rl.cleanupRoutine()
 
-	return rl
+	return rl.middleware
 }
 
-func (rl *RateLimiter) Middleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		clientIP := c.ClientIP()
+func (rl *RateLimiterMiddleware) middleware(c *gin.Context) {
+	ip := c.ClientIP()
 
-		if !rl.allow(clientIP) {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":   "Rate limit exceeded",
-				"message": "Too many requests, please try again later",
-				"code":    http.StatusTooManyRequests,
-			})
-			c.Abort()
-			return
-		}
-
-		c.Next()
+	limiter := rl.getLimiter(ip)
+	if !limiter.Allow() {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "Rate limit exceeded",
+		})
+		c.Abort()
+		return
 	}
+
+	c.Next()
 }
 
-func (rl *RateLimiter) allow(key string) bool {
-	rl.mutex.RLock()
-	bucket, exists := rl.buckets[key]
-	rl.mutex.RUnlock()
+func (rl *RateLimiterMiddleware) getLimiter(ip string) *rate.Limiter {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
 
+	limiter, exists := rl.limiters[ip]
 	if !exists {
-		rl.mutex.Lock()
-		bucket = &tokenBucket{
-			tokens:     rl.rate,
-			capacity:   rl.rate,
-			refill:     rl.window,
-			lastRefill: time.Now(),
+		limiter = &rateLimiter{
+			limiter:  rate.NewLimiter(rl.rate, rl.burst),
+			lastSeen: time.Now(),
 		}
-		rl.buckets[key] = bucket
-		rl.mutex.Unlock()
+		rl.limiters[ip] = limiter
 	}
 
-	bucket.mutex.Lock()
-	defer bucket.mutex.Unlock()
-
-	// Refill tokens if enough time has passed
-	now := time.Now()
-	if now.Sub(bucket.lastRefill) >= bucket.refill {
-		bucket.tokens = bucket.capacity
-		bucket.lastRefill = now
-	}
-
-	if bucket.tokens > 0 {
-		bucket.tokens--
-		return true
-	}
-
-	return false
+	limiter.lastSeen = time.Now()
+	return limiter.limiter
 }
 
-func (rl *RateLimiter) cleanup() {
-	ticker := time.NewTicker(time.Minute * 5)
+func (rl *RateLimiterMiddleware) cleanupRoutine() {
+	ticker := time.NewTicker(rl.cleanup)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		rl.mutex.Lock()
-		now := time.Now()
-		for key, bucket := range rl.buckets {
-			bucket.mutex.Lock()
-			if now.Sub(bucket.lastRefill) > rl.window*2 {
-				delete(rl.buckets, key)
+		rl.mu.Lock()
+		for ip, limiter := range rl.limiters {
+			if time.Since(limiter.lastSeen) > rl.cleanup {
+				delete(rl.limiters, ip)
 			}
-			bucket.mutex.Unlock()
 		}
-		rl.mutex.Unlock()
+		rl.mu.Unlock()
 	}
 }

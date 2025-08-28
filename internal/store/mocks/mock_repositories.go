@@ -56,6 +56,10 @@ func (m *MockURLRepository) HealthCheck(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }
+func (m *MockURLRepository) IsShortCodeExists(ctx context.Context, shortCode string) (bool, error) {
+	args := m.Called(ctx, shortCode)
+	return args.Bool(0), args.Error(1)
+}
 
 type MockCacheRepository struct {
 	mock.Mock
@@ -89,4 +93,9 @@ func (m *MockCacheRepository) HealthCheck(ctx context.Context) error {
 func (m *MockCacheRepository) Cleanup(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
+}
+
+func (m *MockCacheRepository) GetCounter(ctx context.Context, key string) (int64, error) {
+	args := m.Called(ctx, key)
+	return args.Get(0).(int64), args.Error(1)
 }

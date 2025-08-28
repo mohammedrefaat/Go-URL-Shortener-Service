@@ -64,9 +64,17 @@ func (s *URLService) ShortenURL(ctx context.Context, req *domain.ShortenRequest)
 	var shortCode string
 
 	if req.CustomAlias != "" {
-		// Check if custom alias is available
-		if _, err := s.urlRepo.GetURLByShortCode(ctx, req.CustomAlias); err == nil {
-			return nil, ErrCustomAliasTaken
+		// Validate custom alias
+		if len(req.CustomAlias) < 3 || len(req.CustomAlias) > 20 {
+			return nil, fmt.Errorf("custom alias must be between 3 and 20 characters")
+		}
+
+		exists, err := s.urlRepo.IsShortCodeExists(ctx, req.CustomAlias)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check alias availability: %w", err)
+		}
+		if exists {
+			return nil, fmt.Errorf("custom alias already exists")
 		}
 		shortCode = req.CustomAlias
 	} else {

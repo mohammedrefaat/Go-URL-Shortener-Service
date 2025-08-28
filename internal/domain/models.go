@@ -53,3 +53,12 @@ type ErrorResponse struct {
 	Message string `json:"message,omitempty"`
 	Code    int    `json:"code"`
 }
+type URLAnalytics struct {
+	ID        uint64    `json:"id" db:"id"`
+	ShortCode string    `json:"short_code" db:"short_code"`
+	ClickedAt time.Time `json:"clicked_at" db:"clicked_at"`
+	UserAgent string    `json:"user_agent" db:"user_agent"`
+	IPAddress string    `json:"ip_address" db:"ip_address"`
+	Referer   string    `json:"referer" db:"referer"`
+	Country   string    `json:"country" db:"country"`
+}
