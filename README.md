@@ -184,24 +184,6 @@ GET /health
 
 ## 🧪 Testing
 
-### Unit Tests
-```bash
-go test ./tests/unit/... -v
-```
-
-### Integration Tests
-```bash
-# Start test databases
-docker-compose up -d
-
-# Run integration tests
-go test ./tests/integration/... -v
-```
-
-### End-to-End Tests
-```bash
-go test ./tests/e2e/... -v
-```
 
 ### Manual Testing with cURL
 ```bash
