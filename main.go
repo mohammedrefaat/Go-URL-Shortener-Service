@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,11 +23,25 @@ import (
 )
 
 func main() {
+	// Parse command line flags
+	var configPath string
+	var useEnv bool
+	flag.StringVar(&configPath, "config", "config.yaml", "Path to configuration file")
+	flag.BoolVar(&useEnv, "env", false, "Use environment variables instead of config file")
+	flag.Parse()
+
 	// Load configuration
-	cfg, err := config.Load("")
-	if err != nil {
-		log.Fatal("Failed to load configuration", zap.Error(err))
-		return
+	var cfg *config.Config
+	var err error
+
+	if useEnv {
+		cfg = config.LoadFromEnv()
+	} else {
+		cfg, err = config.Load(configPath)
+		if err != nil {
+			// Fallback to environment variables if config file fails to load
+			cfg = config.LoadFromEnv()
+		}
 	}
 
 	// Initialize logger
