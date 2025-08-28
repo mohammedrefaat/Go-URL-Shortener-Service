@@ -1,0 +1,53 @@
+# Application Configuration
+server:
+  port: "8080"
+  environment: "development"  # development, staging, production
+  base_url: "http://localhost:8080"
+
+# Logging configuration
+logging:
+  level: "info"  # debug, info, warn, error
+
+# JWT configuration
+jwt:
+  secret: "your-secret-key-change-in-production"
+
+# Database configuration
+database:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "244159"
+  name: "urlshortener"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: "5m"
+
+# Redis configuration
+redis:
+  host: "localhost"
+  port: "6379"
+  password: ""
+  db: 0
+
+# Rate limiting configuration
+rate_limit:
+  requests: 100
+  window: "60s"
+
+# Snowflake ID generator
+snowflake:
+  machine_id: 1
+
+# URL validation
+validation:
+  malicious_domains:
+    - "malware.example.com"
+    - "phishing.example.com"
+    - "spam.example.com"
+
+# Cache settings
+cache:
+  url_ttl: "1h"
+  analytics_ttl: "15m"

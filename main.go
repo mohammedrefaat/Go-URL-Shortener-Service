@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,20 +24,24 @@ import (
 
 func main() {
 	// Load configuration
-	cfg := config.Load()
+	cfg, err := config.Load("")
+	if err != nil {
+		log.Fatal("Failed to load configuration", zap.Error(err))
+		return
+	}
 
 	// Initialize logger
-	log := logger.New(cfg.LogLevel)
+	log := logger.New(cfg.Logging.Level)
 	defer log.Sync()
 
 	// Initialize repositories
-	dbRepo, err := postgres.NewURLRepository(cfg.DatabaseURL)
+	dbRepo, err := postgres.NewURLRepository(cfg.DatabaseURL())
 	if err != nil {
 		log.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer dbRepo.Close()
 
-	cacheRepo, err := redis.NewCacheRepository(cfg.RedisURL)
+	cacheRepo, err := redis.NewCacheRepository(cfg.RedisURL())
 	if err != nil {
 		log.Fatal("Failed to connect to Redis", zap.Error(err))
 	}
@@ -56,7 +61,7 @@ func main() {
 
 	// Start server
 	srv := &http.Server{
-		Addr:    ":" + cfg.Port,
+		Addr:    ":" + cfg.Port(),
 		Handler: router,
 	}
 
@@ -67,7 +72,7 @@ func main() {
 		}
 	}()
 
-	log.Info("Server started", zap.String("port", cfg.Port))
+	log.Info("Server started", zap.String("port", cfg.Port()))
 
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
@@ -85,7 +90,7 @@ func main() {
 }
 
 func setupRoutes(cfg *config.Config, urlHandler *handler.URLHandler, analyticsHandler *handler.AnalyticsHandler, healthHandler *handler.HealthHandler, log *zap.Logger) *gin.Engine {
-	if cfg.Environment == "production" {
+	if cfg.Environment() == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -105,7 +110,7 @@ func setupRoutes(cfg *config.Config, urlHandler *handler.URLHandler, analyticsHa
 	v1.Use(rateLimiter.Middleware())
 	{
 		v1.POST("/shorten", urlHandler.ShortenURL)
-		v1.GET("/analytics/:shortCode", middleware.JWTAuth(cfg.JWTSecret), analyticsHandler.GetAnalytics)
+		v1.GET("/analytics/:shortCode", middleware.JWTAuth(cfg.JWTSecret()), analyticsHandler.GetAnalytics)
 	}
 
 	// Redirect route (no rate limiting for better UX)

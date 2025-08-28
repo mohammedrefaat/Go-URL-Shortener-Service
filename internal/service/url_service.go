@@ -70,7 +70,7 @@ func (s *URLService) ShortenURL(ctx context.Context, req *domain.ShortenRequest)
 		}
 		shortCode = req.CustomAlias
 	} else {
-		shortCode = utils.GenerateID(s.cfg.MachineID)
+		shortCode = utils.GenerateID(s.cfg.MachineID())
 		if shortCode == "" {
 			return nil, fmt.Errorf("failed to generate short code: %w", err)
 		}
@@ -167,7 +167,7 @@ func (s *URLService) isExpired(url *domain.URL) bool {
 
 func (s *URLService) buildResponse(url *domain.URL) *domain.ShortenResponse {
 	return &domain.ShortenResponse{
-		ShortURL:    s.cfg.BaseURL + "/" + url.ShortCode,
+		ShortURL:    s.cfg.BaseURL() + "/" + url.ShortCode,
 		ShortCode:   url.ShortCode,
 		OriginalURL: url.OriginalURL,
 		ExpiresAt:   url.ExpiresAt,

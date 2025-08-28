@@ -23,8 +23,12 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
 		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
-			MachineID: 1,
-			BaseURL:   "http://localhost:8080",
+			Server: config.ServerConfig{
+				BaseURL: "http://localhost:8080",
+			},
+			Snowflake: config.SnowflakeConfig{
+				MachineID: 1,
+			},
 		})
 
 		req := &domain.ShortenRequest{
@@ -66,8 +70,12 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
 		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
-			MachineID: 1,
-			BaseURL:   "http://localhost:8080",
+			Server: config.ServerConfig{
+				BaseURL: "http://localhost:8080",
+			},
+			Snowflake: config.SnowflakeConfig{
+				MachineID: 1,
+			},
 		})
 
 		req := &domain.ShortenRequest{
@@ -87,8 +95,12 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
 		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
-			MachineID: 1,
-			BaseURL:   "http://localhost:8080",
+			Server: config.ServerConfig{
+				BaseURL: "http://localhost:8080",
+			},
+			Snowflake: config.SnowflakeConfig{
+				MachineID: 1,
+			},
 		})
 
 		req := &domain.ShortenRequest{
@@ -127,8 +139,12 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
 		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
-			MachineID: 1,
-			BaseURL:   "http://localhost:8080",
+			Server: config.ServerConfig{
+				BaseURL: "http://localhost:8080",
+			},
+			Snowflake: config.SnowflakeConfig{
+				MachineID: 1,
+			},
 		})
 
 		req := &domain.ShortenRequest{
@@ -164,8 +180,12 @@ func TestURLService_ShortenURL(t *testing.T) {
 		mockCache := new(mocks.MockCacheRepository)
 		logger := zaptest.NewLogger(t)
 		urlService := NewURLService(mockRepo, mockCache, logger, &config.Config{
-			MachineID: 1,
-			BaseURL:   "http://localhost:8080",
+			Server: config.ServerConfig{
+				BaseURL: "http://localhost:8080",
+			},
+			Snowflake: config.SnowflakeConfig{
+				MachineID: 1,
+			},
 		})
 
 		req := &domain.ShortenRequest{

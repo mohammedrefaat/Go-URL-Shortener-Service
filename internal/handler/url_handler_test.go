@@ -32,8 +32,12 @@ func TestURLHandler_ShortenURL(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 
 	urlService := service.NewURLService(mockRepo, mockCache, logger, &config.Config{
-		BaseURL:   "http://localhost:8080",
-		MachineID: 1,
+		Server: config.ServerConfig{
+			BaseURL: "http://localhost:8080",
+		},
+		Snowflake: config.SnowflakeConfig{
+			MachineID: 1,
+		},
 	})
 	urlHandler := NewURLHandler(urlService, logger)
 

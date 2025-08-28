@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,10 +13,6 @@ import (
 type URLHandler struct {
 	urlService *service.URLService
 	logger     *zap.Logger
-}
-type URLService interface {
-	ShortenURL(ctx context.Context, req *domain.ShortenRequest) (*domain.ShortenResponse, error)
-	GetOriginalURL(ctx context.Context, shortCode string) (string, error)
 }
 
 func NewURLHandler(urlService *service.URLService, logger *zap.Logger) *URLHandler {
